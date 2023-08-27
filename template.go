@@ -20,6 +20,8 @@ import (
 	xmlToJson "github.com/basgys/goxml2json"
 )
 
+var BrowserPath string = ""
+
 //Function used to convert the tempory html file to the pdf
 func ToPDF(htmlfile string, pdffile string) error {
 
@@ -49,10 +51,25 @@ func ToPDF(htmlfile string, pdffile string) error {
 		}
 	}
 
-	taskCtx, cancel := chromedp.NewContext(
-		context.Background(),
-		chromedp.WithLogf(log.Printf),
-	)
+	var taskCtx context.Context
+	var cancel context.CancelFunc
+	if BrowserPath == "" {
+		taskCtx, cancel = chromedp.NewContext(
+			context.Background(),
+			chromedp.WithLogf(log.Printf),
+		)
+	} else {
+		opt := []func(allocator *chromedp.ExecAllocator){
+			chromedp.ExecPath(BrowserPath),
+		}
+		allocatorCtx, allocatorCancel := chromedp.NewExecAllocator(
+			context.Background(),
+			append(opt, chromedp.DefaultExecAllocatorOptions[:]...)[:]...,
+		)
+		defer allocatorCancel()
+		taskCtx, cancel = chromedp.NewContext(allocatorCtx,
+			chromedp.WithLogf(log.Printf))
+	}
 	defer cancel()
 	var pdfBuffer []byte
 	if err := chromedp.Run(taskCtx, pdfGrabber("file://"+htmlfile, "body", &pdfBuffer)); err != nil {
