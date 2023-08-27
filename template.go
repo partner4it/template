@@ -68,6 +68,10 @@ func ToPDF(htmlfile string, pdffile string) error {
 func ToTemplate(tplName string, data *string) (string, error) {
 	t, err := template.New(filepath.Base(tplName)).Funcs(template.FuncMap{
 		"now": time.Now,
+		"toTime": func(RFC3339 string) time.Time {
+			t, _ := time.Parse(time.RFC3339, RFC3339)
+			return t
+		},
 		"inc": func(n int) int {
 			return n + 1
 		},
