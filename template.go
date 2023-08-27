@@ -66,12 +66,14 @@ func ToPDF(htmlfile string, pdffile string) error {
 
 //Apply the json data to the template
 func ToTemplate(tplName string, data *string) (string, error) {
-	t, err := template.New(filepath.Base(tplName)).Funcs(template.FuncMap{
+	return ToTemplateFunc(tplName, data, nil)
+}
+
+func ToTemplateFunc(tplName string, data *string, funcMap template.FuncMap) (string, error) {
+
+	//Some handy default functions
+	funcs := template.FuncMap{
 		"now": time.Now,
-		"toTime": func(RFC3339 string) time.Time {
-			t, _ := time.Parse(time.RFC3339, RFC3339)
-			return t
-		},
 		"inc": func(n int) int {
 			return n + 1
 		},
@@ -87,7 +89,14 @@ func ToTemplate(tplName string, data *string) (string, error) {
 		"slice": func(args ...interface{}) []interface{} {
 			return args
 		},
-	}).ParseFiles(tplName)
+	}
+
+	//Add the funcMap to default funcs
+	for k, v := range funcMap {
+		funcs[k] = v
+	}
+
+	t, err := template.New(filepath.Base(tplName)).Funcs(funcs).ParseFiles(tplName)
 	if err != nil {
 		return "", err
 	}
@@ -106,7 +115,11 @@ func ToTemplate(tplName string, data *string) (string, error) {
 }
 
 //Convert a xml to PDF using the templatefile and tempfile
-func XMLtoPDF(fileIn string, fileOut string, tplName string, tempFile string) error {
+func XMLtoPdf(fileIn string, fileOut string, tplName string, tempFile string) error {
+	return XMLtoPdfFunc(fileIn, fileOut, tplName, tempFile, nil)
+}
+
+func XMLtoPdfFunc(fileIn string, fileOut string, tplName string, tempFile string, funcMap template.FuncMap) error {
 	xml, err := os.ReadFile(fileIn)
 	if err != nil {
 		return err
@@ -119,7 +132,7 @@ func XMLtoPDF(fileIn string, fileOut string, tplName string, tempFile string) er
 
 	// Make for the bytebuffer a string and run it through the template
 	jsonString := json.String()
-	content, err := ToTemplate(tplName, &jsonString)
+	content, err := ToTemplateFunc(tplName, &jsonString, funcMap)
 	if err != nil {
 		return err
 	}
