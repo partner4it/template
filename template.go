@@ -91,6 +91,16 @@ func ToTemplateFunc(tplName string, data *string, funcMap template.FuncMap) (str
 	//Some handy default functions
 	funcs := template.FuncMap{
 		"now": time.Now,
+		"parseTime": func(timeStamp string, format string) time.Time {
+			if format == "" {
+				format = "2006-01-02T15:04:05"
+			}
+			t, err := time.Parse(format, timeStamp)
+			if err != nil {
+				log.Println(err)
+			}
+			return t
+		},
 		"inc": func(n int) int {
 			return n + 1
 		},
@@ -132,11 +142,11 @@ func ToTemplateFunc(tplName string, data *string, funcMap template.FuncMap) (str
 }
 
 //Convert a xml to PDF using the templatefile and tempfile
-func XMLtoPdf(fileIn string, fileOut string, tplName string, tempFile string) error {
-	return XMLtoPdfFunc(fileIn, fileOut, tplName, tempFile, nil)
+func XmlToPdf(fileIn string, fileOut string, tplName string, tempFile string) error {
+	return XmlToPdfFunc(fileIn, fileOut, tplName, tempFile, nil)
 }
 
-func XMLtoPdfFunc(fileIn string, fileOut string, tplName string, tempFile string, funcMap template.FuncMap) error {
+func XmlToPdfFunc(fileIn string, fileOut string, tplName string, tempFile string, funcMap template.FuncMap) error {
 	xml, err := os.ReadFile(fileIn)
 	if err != nil {
 		return err
@@ -149,6 +159,33 @@ func XMLtoPdfFunc(fileIn string, fileOut string, tplName string, tempFile string
 
 	// Make for the bytebuffer a string and run it through the template
 	jsonString := json.String()
+	content, err := ToTemplateFunc(tplName, &jsonString, funcMap)
+	if err != nil {
+		return err
+	}
+
+	//Save the content to the tempfile
+	if err = ioutil.WriteFile(tempFile, []byte(content), 0644); err != nil {
+		return err
+	}
+
+	// Convert the tempfile to outputfile pdf
+	path, err := os.Getwd() //We need fullpath of tempfile
+	if err != nil {
+		return err
+	}
+	if err = ToPDF(path+"/"+tempFile, fileOut); err != nil {
+		return err
+	}
+	return nil
+}
+
+func JsonToPdfFunc(fileIn string, fileOut string, tplName string, tempFile string, funcMap template.FuncMap) error {
+	jsonFile, err := os.ReadFile(fileIn)
+	if err != nil {
+		return err
+	}
+	jsonString := string(jsonFile)
 	content, err := ToTemplateFunc(tplName, &jsonString, funcMap)
 	if err != nil {
 		return err
